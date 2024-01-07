@@ -1,6 +1,241 @@
-﻿@*
-    For more information on enabling MVC for empty projects, visit https://go.microsoft.com/fwlink/?LinkID=397860
-*@
-@{
 
-}
+<h2> Sale</h2>
+<button onclick="openModal(null)">Add Sale</button>
+<table>
+    <thead>
+        <tr>
+            <th>Customername</th>
+            <th>Productname</th>
+            <th>Quantity</th>
+            <th>TotalPrice</th>
+            
+        </tr>
+    </thead>
+    <tbody id="tableBody">
+    </tbody>
+</table>
+
+<div class="modal fade" id="exampleModalCenter" tabindex="-1" role="dialog" aria-labelledby="exampleModalCenterTitle" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="exampleModalLongTitle">Create sale</h5>
+            </div>
+            <div class="modal-body">
+                <form class="needs-validation" action="" novalidate method="">
+                    <input hidden id="sale-id" />
+
+                    <div class="row">
+                        <div class="col-4">
+                            <label for="customer">Customer:</label>
+                            <select id="customer" required>
+                                <option value=""></option>  
+                            </select>
+                            <div class="invalid-feedback">Example invalid custom select feedback</div>
+                        
+                        </div>
+
+                        <div class="col-4">
+                            <label  for="product">Product:</label>
+                            <select id="product" onchange="calculateTotalPrice()" required>
+                                <option value=""></option>
+                            </select>
+                            <div class="invalid-feedback">Example invalid custom select feedback</div>
+                        </div>
+                        <div class="col-4">
+                            <label class="form-label">Quantity</label>
+                            <input type="number" id="quantity" oninput="calculateTotalPrice()" class=" form-control" required />
+                           
+                        </div>
+                        <div class="col-4">
+                            <label class="form-label">TotalPrice</label>
+                            <input type="number" id="totalprice"class="form-control" readonly />
+                       
+                        </div>
+                        <div class="col-4">
+                            <button type="submit" class="btn btn-primary">Submit</button>
+                            <button type="button" class="btn btn-primary" id="back">Back</button>
+                        </div>
+                    </div>
+
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://code.jquery.com/jquery-3.7.1.min.js" integrity="sha256-/JqT3SQfawRcv/BIHPThkBvs0OEvtFFmqPF/lYI/Cxo=" crossorigin="anonymous"></script>
+
+ <script defer>
+    var Sales = [];
+    var Customers = [];
+    var Products = [];
+    var GetCustomers = async () => {
+        const data = await fetchData("/Customer/GetCustomerList");
+        return (data);
+    }
+    var GetProducts = async () => {
+        const data = await fetchData("/Product/GetProductList");
+        return (data);
+    }
+    var GetSales = async () => {
+        const data = await fetchData("/Sale/GetSaleList");
+        return (data);
+    }
+    var openModal = async (id) => {
+        let sale = { customerId: null, id:null,productId: null , quantity: '' , totalPrice:'' };
+        if (id) {
+            sale = await fetchData("/Sale/GetSale?id=" + id);
+        }
+        $('#customer').val(sale.customerId)
+        $('#product').val(sale.productId);
+        $('#totalprice').val(sale.totalPrice);
+        $('#quantity').val(sale.quantity);
+        $('#sale-id').val(id);
+        $('#exampleModalCenter').modal('show');
+    }
+    (function () {
+        'use strict'
+        var forms = document.querySelectorAll('.needs-validation')
+
+
+        Array.prototype.slice.call(forms)
+            .forEach(function (form) {
+                form.addEventListener('submit', function (event) {
+                    console.log(event)
+                    if (!form.checkValidity()) {
+                        $(form).find("input").get().forEach(e => $(e).siblings(".invalid-feedback").html(e.validationMessage));
+                        event.preventDefault()
+                        event.stopPropagation()
+                    }
+                    else {
+                        PostSaleData()
+                    }
+
+                    form.classList.add('was-validated')
+                }, false)
+            })
+    })()
+
+    async function PostSaleData() {
+        const sale = {};
+        sale.CustomerId = $("#customer").val();
+        sale.ProductId = $("#product").val();
+        sale.Quantity = parseFloat($("#quantity").val());
+        sale.TotalPrice = parseFloat($("#totalprice").val());
+        if (parseInt($("#sale-id").val())) sale.id = parseInt($("#sale-id").val());
+        var url = '/Sale/AddSale';
+        const onSuccess = () => GetAllList();
+            // Assuming you have functions to update and populate data
+
+        if (sale.id) {
+            url = '/sale/UpdateSale';
+            PutData(url, sale, onSuccess);
+        }
+        else {
+            postData(url, sale, onSuccess);
+
+        }
+
+        
+    }
+    // GetAllList();
+
+    var deleteSale = async (id) => {
+
+        var url = '/Sale/DeleteSale/?id=' + id;
+        var onSuccess = GetAllList;
+        DeleteData(url, onSuccess)
+
+    }
+    function calculateTotalPrice() 
+    {
+        const ProductId = $("#product").val();
+        var price = Products.find(x => x.id == ProductId)?.price || 0;
+        const quantity = parseFloat($("#quantity").val()) || 0;
+        console.log(quantity * price, quantity,price)
+        $("#totalprice").val(quantity * price);
+        return  (quantity*price)
+    }
+
+    async function GetAllList ()
+    {
+        Customers = await GetCustomers();
+        Products = await GetProducts();
+        Sales = await GetSales();
+      //for each sale in sales add two fields customer and product using customerid and productid
+        Sales.forEach(sale => {
+            sale.customerName = getCustomerNameById(sale.customerId)
+            sale.productName = getProductNameById(sale.productId)
+        });
+
+        populateList(Sales, "Sales");
+        Site.populateDropdown("customer", Customers);
+        Site.populateDropdown("product", Products);
+    }
+
+
+
+    function getCustomerNameById(customerId) {
+        const customer = Customers.find(c => c.id === customerId);
+        return customer ? customer.name : null;
+    }
+
+    function getProductNameById(productId) {
+        const product = Products.find(p => p.id === productId);
+        return product ? product.name : null;
+    }
+
+    
+    // var populateList = () => {
+    //     const customer = $("#customer")
+    //     var options=""
+    //     console.log(Customers)
+    //    Customers.forEach(c => {
+    //         options += `  <option value="${c.id}">${c.name}</option>`
+    //     })
+    //     customer.html(options)
+    //     const product = $("#product")
+    //     options = ""
+    //     Products.forEach(p => {
+    //         options += `  <option value="${p.id}">${p.name}</option>`
+    //     })
+    //     product.html(options)
+
+       
+        
+        // const tbody = $('#tableBody');
+        // let htmlstr = "";
+        // sales = typeof Sales == 'string' ? JSON.parse(Sales) : Sales;
+        // sales.forEach(sale => {
+        //     sale.customer = Customers.find(x => x.id === sale.customerId)?.name;
+        //     sale.product = Products.find(x => x.id === sale.productId)?.name;
+        //     var row = `<tr>
+        //                             <td>${sale.customer}</td>
+        //                             <td>${sale.product}</td>
+        //                             <td>${sale.quantity}</td>
+        //                             <td>${sale.totalPrice}</td>
+        //                             <td>
+        //                                     <a onclick="openModal(${sale.id})">Edit</a>
+        //                             </td>
+        //                             <td>
+
+        //                                     <a onclick="deleteSale(${sale.id})">Delete</a>
+
+        //                             </td>
+        //                         </tr>`;
+        //     htmlstr += row;
+        // });
+        // tbody.html(htmlstr);
+
+    var onSuccess = () => {
+        GetAllList().then(Sales => populateList(Sales, "Sales"));
+        $('#exampleModalCenter').modal('hide');
+    };
+        
+
+    GetAllList();
+  
+    // populateList(Sales, "Sales")
+
+</script> 
