@@ -1,0 +1,143 @@
+﻿
+<h2>Customers</h2>
+<button onclick="openModal(null)">Add Customer</button>
+<table>
+    <thead>
+        <tr>
+            <th>Name</th>
+            <th>Email</th>
+        </tr>
+    </thead>
+    <tbody id="tableBody">
+    </tbody>
+</table>
+
+<div class="modal fade" id="exampleModalCenter" tabindex="-1" role="dialog" aria-labelledby="exampleModalCenterTitle" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="exampleModalLongTitle">Create Customer</h5>
+            </div>
+            <div class="modal-body">
+                <form  class="needs-validation" action="" novalidate method="">
+                
+                    <input hidden id="customer-id" />
+
+                    <div class="row" >
+                        <div class="col-md-4">
+                            <label for="customer-name" class="form-label"> Name</label>
+                            <input type="text" maxlength="20" pattern="^[A-Za-z]*$" minlength="3" id="customer-name" class="form-control" required />
+                            <div class="invalid-feedback">
+                                Please use criteria.
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <label for="customer-email" class="form-label"> Email</label>
+                            <input type="email" class="form-control" id="customer-email"  pattern="^[a-z0-9._%+\-]+@@[a-z0-9.\-]+\.[a-z]{2,}$"  required />
+                            <div class="invalid-feedback">
+                                Please use criteria.
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <button type="submit"  class="btn btn-primary">Submit</button>
+                            <button type="button" class="btn btn-primary" id="back">Back</button>
+
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script defer>
+        var Customers = [];
+        var GetCustomers = async () => {
+            const data = await fetchData("/Customer/GetCustomerList");
+            return (data);
+        }
+
+        var openModal = async (id) => {
+            let Customer = { id: null, name: '', email: '' };
+            if (id) {
+                Customer = await fetchData("/Customer/GetCustomer?id=" + id);
+            }
+            $('#customer-name').val(Customer.name);
+            $('#customer-email').val(Customer.email);
+            $('#customer-id').val(Customer.id);
+            $('#id-display').text(id);
+            $('#exampleModalCenter').modal('show');
+        }
+
+        var saveCustomer = (Customer) => {
+            alert("customer saved");
+        }
+
+        var deleteCustomer = async (id) => {
+          
+            var url = '/Customer/DeleteCustomer/?id=' + id;
+            var onSuccess = () => { GetCustomers().then(customers => populateList(customers,"Customers")); };
+           DeleteData(url , onSuccess)
+           
+        }
+      
+        
+
+       
+
+
+        (function () {
+            'use strict'
+            var forms = document.querySelectorAll('.needs-validation')
+
+        
+         Array.prototype.slice.call(forms)
+            .forEach(function (form) {
+                form.addEventListener('submit', function (event) {
+                    console.log(event)
+                    if (!form.checkValidity()) {
+                        $(form).find("input").get().forEach(e => $(e).siblings(".invalid-feedback").html(e.validationMessage));
+                        event.preventDefault()
+                        event.stopPropagation()
+                    }
+                    else {
+                             SaveCustomerData()
+                    }
+
+                    form.classList.add('was-validated')
+                }, false)
+            })
+        }) ()
+
+        async function SaveCustomerData() {
+            const customer = {};
+            customer.Name = $("#customer-name").val();
+            customer.Email = $("#customer-email").val();
+            if (parseInt($("#customer-id").val())) customer.Id = parseInt($("#customer-id").val());
+
+            
+
+            var url = '/Customer/AddCustomer';
+            const onSuccess = () => { GetCustomers().then(customers => populateList(customers, "Customers")); $('#exampleModalCenter').modal('hide'); }
+
+            if (customer.Id) {
+                url = '/Customer/UpdateCustomer';
+                PutData(url, customer, onSuccess);
+            } else {
+                postData(url, customer, onSuccess);
+            }
+        }
+       
+        
+
+         GetCustomers().then(customers => populateList(customers,"Customers"));
+
+        $('#back').on('click', function () {
+            $('#exampleModalCenter').modal('hide');
+        });
+       
+       
+    </script>
+}
+
